@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 function safeNext(next: FormDataEntryValue | null): string {
   const n = typeof next === "string" ? next : "";
-  return n.startsWith("/") && !n.startsWith("//") ? n : "/followups";
+  return n.startsWith("/") && !n.startsWith("//") ? n : "/";
 }
 
 export async function signIn(formData: FormData) {

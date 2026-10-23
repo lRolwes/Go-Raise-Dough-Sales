@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   }
   if (user && open) {
     const url = request.nextUrl.clone();
-    url.pathname = "/followups";
+    url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }

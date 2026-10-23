@@ -15,6 +15,7 @@ export default async function Shell({ active, children }: { active: string; chil
     .lte("due_on", todayCentral());
 
   const tabs = [
+    { href: "/", label: "Dashboard", key: "dashboard" },
     { href: "/followups", label: "Follow-ups", key: "followups" },
     { href: "/prospects", label: "Prospects", key: "prospects" },
     { href: "/prospects/new", label: "+ Add prospect", key: "new" },
@@ -23,7 +24,7 @@ export default async function Shell({ active, children }: { active: string; chil
     <>
       <header className="top">
         <div className="top-in">
-          <Link href="/followups" className="brand">
+          <Link href="/" className="brand">
             GRD <span>Sales</span>
           </Link>
           <nav className="nav" aria-label="Main">
