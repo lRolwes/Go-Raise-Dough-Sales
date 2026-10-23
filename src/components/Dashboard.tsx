@@ -29,7 +29,6 @@ type Tally = { total: number; contacted: number; responded: number; bounced: num
 const PIPELINE = ["Not contacted", "Draft ready", "Sent", "Replied", "Meeting set", "Customer", "Not interested", "Bounced"];
 const CONTACTED = new Set(["Sent", "Replied", "Meeting set", "Not interested", "Customer", "Bounced"]);
 const RESPONDED = new Set(["Replied", "Meeting set", "Not interested", "Customer"]);
-const OUTREACH = new Set(["Email sent", "Call", "Voicemail", "Meeting"]);
 
 function tally(cells: Cell[]): Tally {
   const t: Tally = { total: 0, contacted: 0, responded: 0, bounced: 0, byStatus: {} };
@@ -82,7 +81,7 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
   );
   const overdueBy = new Map(stats.follow_ups.map((f) => [f.assignee ?? "Unassigned", f.overdue]));
 
-  // ---- activity: last 7 days vs the 7 before, and a 30-day daily series
+  // ---- activity: last 7 days vs the 7 before
   const sumKinds = (kinds: string[], from: string, to: string) =>
     stats.activity.filter((a) => kinds.includes(a.kind) && a.day >= from && a.day <= to).reduce((s, a) => s + a.n, 0);
   const wk = (kinds: string[]) => ({
@@ -95,20 +94,6 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
     { label: "Calls & voicemails", ...wk(["Call", "Voicemail"]) },
     { label: "Meetings", ...wk(["Meeting"]) },
   ];
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const day = addDays(today, i - 29);
-    const on = stats.activity.filter((a) => a.day === day);
-    const of = (k: string) => on.filter((a) => a.kind === k).reduce((s, a) => s + a.n, 0);
-    return {
-      day,
-      emails: of("Email sent"),
-      calls: of("Call") + of("Voicemail") + of("Meeting"),
-      replies: of("Email received"),
-      total: on.filter((a) => OUTREACH.has(a.kind)).reduce((s, a) => s + a.n, 0),
-    };
-  });
-  const peak = days.reduce((m, d, i) => (d.total > days[m].total ? i : m), 0);
-  const dayMax = Math.max(1, days[peak].total);
 
   // ---- links that keep the current scope
   const prospects = (p: Record<string, string> = {}) => {
@@ -239,49 +224,6 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
               );
             })}
           </div>
-          <figure className="cols">
-            <figcaption className="sub-h">Emails, calls and meetings per day, last 30 days</figcaption>
-            <div className="plot">
-              {days.map((d, i) => {
-                const tip = `${shortDate(d.day)}: ${d.emails} emails sent, ${d.calls} calls or meetings, ${d.replies} replies`;
-                return (
-                  <div
-                    key={d.day}
-                    className="slot"
-                    title={tip}
-                    aria-label={tip}
-                    tabIndex={0}
-                    style={{ "--h": `${(d.total / dayMax) * 100}%` } as React.CSSProperties}
-                  >
-                    {d.total > 0 && <span className="col" />}
-                    {d.total > 0 && (i === peak || i === 29) && <span className="cap">{d.total}</span>}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="xaxis" aria-hidden="true">
-              {days.map((d, i) => (
-                <span key={d.day}>
-                  {(29 - i) % 7 === 0 && <em className={i < 3 ? "start" : i === 29 ? "end" : ""}>{shortDate(d.day)}</em>}
-                </span>
-              ))}
-            </div>
-            <details className="small">
-              <summary>Show as a table</summary>
-              <table>
-                <thead>
-                  <tr><th>Day</th><th className="num">Emails sent</th><th className="num">Calls &amp; meetings</th><th className="num">Replies</th></tr>
-                </thead>
-                <tbody>
-                  {days.filter((d) => d.total || d.replies).reverse().map((d) => (
-                    <tr key={d.day}>
-                      <td>{shortDate(d.day)}</td><td className="num">{d.emails}</td><td className="num">{d.calls}</td><td className="num">{d.replies}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </details>
-          </figure>
         </section>
       </div>
 

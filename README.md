@@ -4,7 +4,7 @@ The Go Raise Dough sales CRM: every prospect organization, who owns it, what has
 
 ## What it does
 
-- **Dashboard** (the home page): prospect counts by status, follow-ups due, the last 7 days of emails, replies and calls with a 30-day daily chart, a per-person status table, breakdowns by org type, fundraising, state and contact type, warm leads, and recent replies and calls. Switch between everyone, one person, or unassigned prospects. The status, follow-up and breakdown numbers link to the matching list. The counts come from the `dashboard_stats()` database function.
+- **Dashboard** (the home page): prospect counts by status, follow-ups due, the last 7 days of emails, replies and calls compared with the week before, a per-person status table, breakdowns by org type, fundraising, state and contact type, warm leads, and recent replies and calls. Switch between everyone, one person, or unassigned prospects. The status, follow-up and breakdown numbers link to the matching list. The counts come from the `dashboard_stats()` database function.
 - **Follow-ups**: every open follow-up, filtered by when it is due (overdue, today, this week), by who owns it, and by the prospect's status, org type and fundraising. Mark one done or push it a week from the list.
 - **Prospects**: the full list, filtered by status, assignee (including unassigned), org type, state, fundraising, game status, contact type and fit, plus a name search.
 - **Prospect page**: log a call, email or note (and optionally change the status and schedule the next follow-up in the same step), the full history, contacts, what the org runs, research evidence and sources, the email draft, and an editable details form.

@@ -135,22 +135,6 @@ th.num, td.num { text-align: right; }
 table.bd th, table.bd td { padding: 6px 7px; }
 table.bd .hb { min-width: 80px; }
 
-/* daily column chart: one series, so no legend; values on hover, the peak and today labelled */
-.cols { margin: 0; }
-.cols .plot { display: flex; align-items: flex-end; gap: 2px; height: 150px; padding-top: 20px; border-bottom: 1px solid #dfe4e1; }
-.cols .slot { flex: 1 1 0; height: 100%; position: relative; display: flex; align-items: flex-end; justify-content: center; border-radius: 4px 4px 0 0; }
-.cols .slot:hover, .cols .slot:focus-visible { background: #eef3f2; }
-.cols .col { width: 100%; max-width: 24px; height: var(--h); background: var(--blue); border-radius: 4px 4px 0 0; }
-.cols .slot:hover .col, .cols .slot:focus-visible .col { background: var(--teal); }
-.cols .cap { position: absolute; bottom: calc(var(--h) + 3px); left: 50%; transform: translateX(-50%); font-size: .75rem; font-weight: 800; white-space: nowrap; }
-.cols .xaxis { display: flex; gap: 2px; height: 18px; margin-top: 4px; }
-.cols .xaxis span { flex: 1 1 0; position: relative; }
-.cols .xaxis em { position: absolute; left: 50%; transform: translateX(-50%); font-style: normal; font-size: .72rem; color: #5d7680; white-space: nowrap; }
-.cols .xaxis em.start { left: 0; transform: none; }
-.cols .xaxis em.end { left: auto; right: 0; transform: none; }
-.cols details { margin-top: 8px; }
-.cols details table { margin-top: 6px; }
-
 /* login */
 .auth { max-width: 380px; margin: 9vh auto; padding: 0 16px; }
 .auth .card { display: flex; flex-direction: column; gap: 12px; padding: 22px; }
