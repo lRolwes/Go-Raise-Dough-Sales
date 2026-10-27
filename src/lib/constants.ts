@@ -64,7 +64,7 @@ export const ACTIVITY_KINDS = [
   "Status change",
 ] as const;
 
-export const STATES = ["IL", "MO", "OK", "NY"] as const;
+export const STATES = ["IL", "MO", "OK", "IN", "NC", "MS", "WY", "NY"] as const;
 
 /** Today's date in Central time, as YYYY-MM-DD. */
 export function todayCentral(offsetDays = 0): string {
