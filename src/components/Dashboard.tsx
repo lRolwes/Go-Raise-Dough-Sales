@@ -108,6 +108,8 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
     const names = who ? rows.map((r) => r.key) : [...team, "Unassigned"];
     return names.map((n) => rows.find((r) => r.key === n) ?? { key: n, t: tally([]) });
   })();
+  // people who hold at least one prospect, in team order: the columns of the split tables
+  const holders = assigneeRows.filter((r) => r.t.total > 0).map((r) => r.key);
 
   return (
     <>
@@ -268,6 +270,40 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
         </div>
       </section>
 
+      {!who && holders.length > 1 && (
+        <>
+          <Split
+            title="Who has what"
+            head="State"
+            cells={stats.orgs}
+            by={(c) => c.state ?? "Not recorded"}
+            people={holders}
+            param="state"
+            linkable={(k) => (STATES as readonly string[]).includes(k)}
+          />
+          <div className="grid2">
+            <Split
+              title="Org type by person"
+              head="Org type"
+              cells={stats.orgs}
+              by={(c) => c.category ?? "Other"}
+              people={holders}
+              param="category"
+              linkable={(k) => k !== "Other"}
+            />
+            <Split
+              title="Fundraising by person"
+              head="Runs"
+              cells={stats.orgs}
+              by={(c) => c.fundraising ?? "Unknown"}
+              people={holders}
+              param="fundraising"
+              linkable={(k) => k !== "Unknown"}
+            />
+          </div>
+        </>
+      )}
+
       <div className="grid2">
         <Breakdown
           title="By org type"
@@ -343,6 +379,85 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
         </section>
       </div>
     </>
+  );
+}
+
+/** One dimension of the pipeline split by assignee: a stacked bar plus each person's count, linked to their filtered list. */
+function Split({ title, head, cells, by, people, param, linkable }: {
+  title: string; head: string; cells: Cell[]; by: (c: Cell) => string; people: string[];
+  param: string; linkable: (key: string) => boolean;
+}) {
+  const rows = new Map<string, Record<string, number>>();
+  for (const c of cells) {
+    const r = rows.get(by(c)) ?? {};
+    const p = c.assignee ?? "Unassigned";
+    r[p] = (r[p] ?? 0) + c.n;
+    rows.set(by(c), r);
+  }
+  const list = [...rows]
+    .map(([key, r]) => ({ key, r, total: people.reduce((s, p) => s + (r[p] ?? 0), 0) }))
+    .sort((a, b) => b.total - a.total);
+  const sums = people.map((p) => list.reduce((s, x) => s + (x.r[p] ?? 0), 0));
+  const grand = sums.reduce((s, n) => s + n, 0);
+  const max = Math.max(1, ...list.map((x) => x.total));
+  const short = (p: string) => p.split(" ")[0];
+  const href = (key: string | null, p: string) => {
+    const q = new URLSearchParams({ assignee: p === "Unassigned" ? "unassigned" : p });
+    if (key) q.set(param, key);
+    return `/prospects?${q.toString()}`;
+  };
+  return (
+    <section className="card">
+      <h2>
+        {title}{" "}
+        <span className="legend">
+          {people.map((p, i) => <span key={p}><i className={`p${i}`} />{short(p)}</span>)}
+        </span>
+      </h2>
+      <div className="tbl flat">
+        <table className="bd">
+          <thead>
+            <tr>
+              <th>{head}</th>
+              <th>Split</th>
+              {people.map((p) => <th key={p} className="num">{short(p)}</th>)}
+              <th className="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map(({ key, r, total }) => (
+              <tr key={key} title={`${key}: ${people.map((p) => `${short(p)} ${r[p] ?? 0}`).join(", ")}`}>
+                <td>{key}</td>
+                <td>
+                  <div className="sb" style={{ width: `${(100 * total) / max}%` }}>
+                    {people.map((p, i) => (r[p] ? <i key={p} className={`p${i}`} style={{ flexGrow: r[p] }} /> : null))}
+                  </div>
+                </td>
+                {people.map((p) => (
+                  <td key={p} className="num">
+                    {r[p] ? (linkable(key) ? <Link href={href(key, p)}>{r[p]}</Link> : r[p]) : <span className="muted">0</span>}
+                  </td>
+                ))}
+                <td className="num"><b>{total}</b></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>All</th>
+              <th />
+              {people.map((p, i) => (
+                <th key={p} className="num">
+                  <Link href={href(null, p)}>{sums[i].toLocaleString()}</Link>
+                  <div className="small muted">{grand ? `${Math.round((100 * sums[i]) / grand)}%` : "–"}</div>
+                </th>
+              ))}
+              <th className="num">{grand.toLocaleString()}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
   );
 }
 
