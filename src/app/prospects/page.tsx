@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Shell from "@/components/Shell";
 import Select from "@/components/Select";
+import LinkIcon from "@/components/LinkIcon";
 import { createClient } from "@/lib/supabase/server";
 import { teamNames } from "@/lib/session";
 import {
@@ -48,6 +49,18 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
     : { data: [] as { org_id: string; due_on: string; task: string }[] };
   const nextBy = new Map((nexts ?? []).map((n) => [n.org_id, n]));
   const today = todayCentral();
+
+  // related organizations, from either side of the link, for the "Linked" badge
+  type LinkRow = { org_id: string; other: { name: string } | null };
+  const [{ data: linksOut }, { data: linksIn }] = ids.length
+    ? await Promise.all([
+        supabase.from("org_links").select("org_id, other:orgs!org_links_related_id_fkey(name)").in("org_id", ids),
+        supabase.from("org_links").select("org_id:related_id, other:orgs!org_links_org_id_fkey(name)").in("related_id", ids),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const linkedBy = new Map<string, string[]>();
+  for (const l of [...(linksOut ?? []), ...(linksIn ?? [])] as unknown as LinkRow[])
+    if (l.other) linkedBy.set(l.org_id, [...(linkedBy.get(l.org_id) ?? []), l.other.name]);
 
   const qs = (patch: SP) => {
     const p = new URLSearchParams();
@@ -120,10 +133,19 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
             {(rows ?? []).map((r) => {
               const n = nextBy.get(r.id);
               const cls = n ? (n.due_on < today ? "due-over" : n.due_on === today ? "due-today" : "") : "";
+              const linked = linkedBy.get(r.id);
               return (
                 <tr key={r.id}>
                   <td>
                     <Link href={`/prospects/${r.id}`} className="org">{r.name}</Link>
+                    {linked && (
+                      <>
+                        {" "}
+                        <span className="linked" title={`Linked to ${linked.join(", ")}`}>
+                          <LinkIcon /> {linked.length === 1 ? linked[0] : `${linked.length} linked`}
+                        </span>
+                      </>
+                    )}
                     <div className="small muted">{[r.org_type, r.contact_type].filter(Boolean).join(" · ")}</div>
                   </td>
                   <td className="nowrap">{[r.town, r.state].filter(Boolean).join(", ")}</td>

@@ -90,6 +90,10 @@ td.nowrap { white-space: nowrap; }
 .st-draft-ready { background: #ece6f6; color: #57407f; }
 .st-not-interested { background: #f1e7df; color: #7b4a2a; }
 .st-bounced { background: #f6dede; color: var(--danger); }
+/* linked-prospect badge */
+.linked { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--blue); border-radius: 999px; padding: 0 8px; background: #eef6fa; color: var(--blue); font-size: .75rem; font-weight: 800; white-space: nowrap; vertical-align: middle; }
+a.linked:hover { background: #dcecf4; text-decoration: none; }
+.linkbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: -4px 0 12px; font-size: .8rem; font-weight: 700; color: #4b6570; }
 .due-over { color: var(--danger); font-weight: 800; }
 .due-today { color: var(--warn); font-weight: 800; }
 

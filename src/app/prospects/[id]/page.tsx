@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Shell from "@/components/Shell";
 import Select from "@/components/Select";
+import LinkIcon from "@/components/LinkIcon";
 import { createClient } from "@/lib/supabase/server";
 import { currentMember, teamNames } from "@/lib/session";
 import {
@@ -61,6 +62,16 @@ export default async function ProspectPage({
         </span>
         <Link className="right small" href="/prospects">← All prospects</Link>
       </div>
+      {links.length > 0 && (
+        <div className="linkbar">
+          Linked to
+          {links.map((l) => (
+            <Link key={l.id} className="linked" href={`/prospects/${l.other.id}`} title={l.relation ?? undefined}>
+              <LinkIcon /> {l.other.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="grid3">
         {/* left: what to do next, history */}
