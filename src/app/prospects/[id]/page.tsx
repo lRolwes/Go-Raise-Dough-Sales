@@ -5,29 +5,50 @@ import Select from "@/components/Select";
 import { createClient } from "@/lib/supabase/server";
 import { currentMember, teamNames } from "@/lib/session";
 import {
-  addContact, addFollowUp, completeFollowUp, deleteContact, logActivity, reopenFollowUp, snoozeFollowUp, updateOrg,
+  addContact, addFollowUp, completeFollowUp, deleteContact, linkOrgs, logActivity, reopenFollowUp, snoozeFollowUp, unlinkOrgs, updateOrg,
 } from "@/app/actions";
 import {
   ACTIVITY_KINDS, CATEGORIES, CONTACT_TYPES, FITS, FUNDRAISING, GAME_STATUSES, STATUSES, fmtDate, statusClass, todayCentral,
 } from "@/lib/constants";
 
-export default async function ProspectPage({ params }: { params: Promise<{ id: string }> }) {
+type OrgBrief = { id: string; name: string; town: string | null; state: string | null; status: string };
+type OrgLink = { id: string; relation: string | null; other: OrgBrief };
+const BRIEF = "id,name,town,state,status";
+
+export default async function ProspectPage({
+  params, searchParams,
+}: { params: Promise<{ id: string }>; searchParams: Promise<{ linkq?: string }> }) {
   const { id } = await params;
+  const linkq = ((await searchParams).linkq ?? "").trim();
   const supabase = await createClient();
-  const [{ data: org }, { data: contacts }, { data: acts }, { data: fups }, team, me] = await Promise.all([
-    supabase.from("orgs").select("*").eq("id", id).maybeSingle(),
-    supabase.from("contacts").select("*").eq("org_id", id).order("is_primary", { ascending: false }).order("created_at"),
-    supabase.from("activities").select("*").eq("org_id", id).order("occurred_on", { ascending: false }).order("created_at", { ascending: false }),
-    supabase.from("follow_ups").select("*").eq("org_id", id).order("done_at", { ascending: true, nullsFirst: true }).order("due_on"),
-    teamNames(),
-    currentMember(),
-  ]);
+
+  // "Link a related prospect" search: every word has to appear in the name
+  let find = supabase.from("orgs").select(BRIEF).neq("id", id);
+  for (const w of linkq.split(/\s+/).filter(Boolean)) find = find.ilike("name", `%${w.replace(/[%_\\]/g, "\\$&")}%`);
+
+  const [{ data: org }, { data: contacts }, { data: acts }, { data: fups }, { data: linksOut }, { data: linksIn }, { data: found }, team, me] =
+    await Promise.all([
+      supabase.from("orgs").select("*").eq("id", id).maybeSingle(),
+      supabase.from("contacts").select("*").eq("org_id", id).order("is_primary", { ascending: false }).order("created_at"),
+      supabase.from("activities").select("*").eq("org_id", id).order("occurred_on", { ascending: false }).order("created_at", { ascending: false }),
+      supabase.from("follow_ups").select("*").eq("org_id", id).order("done_at", { ascending: true, nullsFirst: true }).order("due_on"),
+      supabase.from("org_links").select(`id, relation, other:orgs!org_links_related_id_fkey(${BRIEF})`).eq("org_id", id),
+      supabase.from("org_links").select(`id, relation, other:orgs!org_links_org_id_fkey(${BRIEF})`).eq("related_id", id),
+      linkq ? find.order("name").limit(12) : Promise.resolve({ data: [] }),
+      teamNames(),
+      currentMember(),
+    ]);
   if (!org) notFound();
   const today = todayCentral();
   const open = (fups ?? []).filter((f) => !f.done_at);
   const done = (fups ?? []).filter((f) => f.done_at);
   const teamOpts = team.map((t) => ({ value: t, label: t }));
   const sources: string[] = Array.isArray(org.sources) ? org.sources : [];
+  const links = ([...(linksOut ?? []), ...(linksIn ?? [])] as unknown as OrgLink[])
+    .filter((l) => l.other)
+    .sort((a, b) => a.other.name.localeCompare(b.other.name));
+  const linked = new Set(links.map((l) => l.other.id));
+  const matches = (found ?? []) as OrgBrief[];
 
   return (
     <Shell active="prospects">
@@ -185,6 +206,59 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
                 <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><input type="checkbox" name="is_primary" /> Primary contact</label>
                 <div><button className="btn sm">Add contact</button></div>
               </form>
+            </details>
+          </section>
+
+          <section className="card" id="links">
+            <h2>Related organizations</h2>
+            <ul className="timeline">
+              {links.map((l) => (
+                <li key={l.id}>
+                  <div>
+                    <Link className="org" href={`/prospects/${l.other.id}`}>{l.other.name}</Link>{" "}
+                    <span className={statusClass(l.other.status)}>{l.other.status}</span>
+                  </div>
+                  <div className="small muted">
+                    {[l.other.town, l.other.state].filter(Boolean).join(", ")}
+                    {l.relation ? ` · ${l.relation}` : ""}
+                  </div>
+                  <form action={unlinkOrgs}><input type="hidden" name="id" value={l.id} /><button className="btn sm ghost" title="Remove this link">Remove</button></form>
+                </li>
+              ))}
+              {!links.length && <li className="muted small">None yet. Link a parish, council, school or club that goes with this one.</li>}
+            </ul>
+            <details style={{ marginTop: 10 }} open={!!linkq}>
+              <summary className="small">Link a related prospect</summary>
+              <form action={`/prospects/${org.id}#links`} className="row" style={{ marginTop: 8 }}>
+                <label style={{ flex: "2 1 200px" }}>Find by name<input id="linkq" name="linkq" defaultValue={linkq} placeholder="e.g. St. Agnes" /></label>
+                <button className="btn sm ghost" type="submit">Search</button>
+              </form>
+              {linkq && (
+                <ul className="timeline" style={{ marginTop: 10 }}>
+                  {matches.map((m) => (
+                    <li key={m.id}>
+                      <div>
+                        <strong>{m.name}</strong>{" "}
+                        <span className="small muted">{[m.town, m.state].filter(Boolean).join(", ")}</span>
+                      </div>
+                      {linked.has(m.id) ? (
+                        <div className="small muted">Already linked</div>
+                      ) : (
+                        <form action={linkOrgs} className="row" style={{ marginTop: 4 }}>
+                          <input type="hidden" name="org_id" value={org.id} />
+                          <input type="hidden" name="related_id" value={m.id} />
+                          <label style={{ flex: "2 1 180px" }}>How they&apos;re connected<input name="relation" placeholder="e.g. Council's home parish" /></label>
+                          <button className="btn sm">Link</button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                  <li className="small muted">
+                    {matches.length ? "Not here? " : `No prospect matches "${linkq}". `}
+                    <Link href={`/prospects/new?link=${encodeURIComponent(org.id)}&name=${encodeURIComponent(linkq)}`}>Add it as a new prospect</Link> and it will be linked to {org.name}.
+                  </li>
+                </ul>
+              )}
             </details>
           </section>
 

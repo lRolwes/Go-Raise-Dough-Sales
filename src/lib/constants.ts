@@ -3,11 +3,19 @@ export const STATUSES = [
   "Draft ready",
   "Sent",
   "Replied",
+  "Qualification & Discovery",
   "Meeting set",
-  "Not interested",
+  "Demo / Presentation",
+  "Proposal / Quote",
+  "Negotiation",
   "Customer",
+  "Not interested",
   "Bounced",
 ] as const;
+
+/** The sales stages from Mike's example: a conversation is under way and the deal is still open.
+ *  Customer is "Closed Won" and Not interested is "Closed Lost". */
+export const DEAL_STAGES = ["Qualification & Discovery", "Meeting set", "Demo / Presentation", "Proposal / Quote", "Negotiation"];
 
 export const CATEGORIES = [
   "Veterans",

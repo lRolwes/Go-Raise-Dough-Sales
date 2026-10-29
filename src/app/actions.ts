@@ -157,6 +157,38 @@ export async function deleteContact(formData: FormData) {
   refresh(data?.org_id);
 }
 
+/** Link two prospects that belong together, e.g. a K of C council and its parish. Noted in both histories. */
+async function addLink(orgId: string, relatedId: string, relation: string | null) {
+  const supabase = await createClient();
+  const me = await currentMember();
+  const { error } = await supabase.from("org_links").insert({ org_id: orgId, related_id: relatedId, relation, created_by: me });
+  if (error?.code === "23505") return; // these two are already linked
+  if (error) throw new Error(error.message);
+  const { data: names } = await supabase.from("orgs").select("id, name").in("id", [orgId, relatedId]);
+  const nameOf = (id: string) => names?.find((n) => n.id === id)?.name ?? id;
+  const how = relation ? ` (${relation})` : "";
+  await supabase.from("activities").insert([
+    { org_id: orgId, kind: "Note", summary: `Linked to ${nameOf(relatedId)}${how}.`, by_member: me },
+    { org_id: relatedId, kind: "Note", summary: `Linked to ${nameOf(orgId)}${how}.`, by_member: me },
+  ]);
+  revalidatePath(`/prospects/${orgId}`);
+  revalidatePath(`/prospects/${relatedId}`);
+}
+
+export async function linkOrgs(formData: FormData) {
+  const orgId = String(formData.get("org_id"));
+  await addLink(orgId, String(formData.get("related_id")), str(formData, "relation"));
+  refresh(orgId);
+  redirect(`/prospects/${orgId}#links`);
+}
+
+export async function unlinkOrgs(formData: FormData) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("org_links").delete().eq("id", String(formData.get("id"))).select("org_id, related_id").single();
+  if (data) revalidatePath(`/prospects/${data.related_id}`);
+  refresh(data?.org_id);
+}
+
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 }
@@ -186,5 +218,7 @@ export async function createOrg(formData: FormData) {
   const c = { name: str(formData, "c_name"), role: str(formData, "c_role"), email: str(formData, "c_email"), phone: str(formData, "c_phone") };
   if (c.name || c.email || c.phone) await supabase.from("contacts").insert({ org_id: id, ...c, is_primary: true });
   await supabase.from("activities").insert({ org_id: id, kind: "Note", summary: "Added to the CRM.", by_member: me });
+  const linkTo = str(formData, "link_to");
+  if (linkTo) await addLink(linkTo, id, str(formData, "relation"));
   redirect(`/prospects/${id}`);
 }

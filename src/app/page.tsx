@@ -2,7 +2,7 @@ import Shell from "@/components/Shell";
 import Dashboard, { type DashboardData, type Stats } from "@/components/Dashboard";
 import { createClient } from "@/lib/supabase/server";
 import { currentMember, teamNames } from "@/lib/session";
-import { todayCentral } from "@/lib/constants";
+import { DEAL_STAGES, todayCentral } from "@/lib/constants";
 
 type SP = Record<string, string | undefined>;
 
@@ -26,7 +26,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       "assignee",
     ).order("due_on").order("org_name").limit(6),
     scoped(
-      supabase.from("orgs").select("id,name,status,town,state,assignee,last_contact").in("status", ["Replied", "Meeting set"]),
+      supabase.from("orgs").select("id,name,status,town,state,assignee,last_contact").in("status", ["Replied", ...DEAL_STAGES]),
       "assignee",
     ).order("last_contact", { ascending: false, nullsFirst: false }).limit(12),
     scoped(

@@ -78,7 +78,13 @@ td.nowrap { white-space: nowrap; }
 
 /* status chips */
 .st { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .78rem; font-weight: 800; white-space: nowrap; background: #e6ecea; color: #3d5560; }
-.st-replied, .st-meeting-set { background: #d4f6e0; color: #0f6a34; }
+.st-replied { background: #d4f6e0; color: #0f6a34; }
+/* sales stages darken as the deal moves forward */
+.st-qualification-discovery { background: #c3efd3; color: #0f6a34; }
+.st-meeting-set { background: #b0e8c6; color: #0c5a2c; }
+.st-demo-presentation { background: #9ce0b8; color: #0a4f26; }
+.st-proposal-quote { background: #88d8aa; color: #08441f; }
+.st-negotiation { background: #74cf9c; color: #063a1a; }
 .st-customer { background: var(--green); color: var(--teal); }
 .st-sent { background: #dcecf4; color: #0b5874; }
 .st-draft-ready { background: #ece6f6; color: #57407f; }

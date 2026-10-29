@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { STATES, fmtDate, statusClass } from "@/lib/constants";
+import { DEAL_STAGES, STATES, STATUSES, fmtDate, statusClass } from "@/lib/constants";
 
 type Cell = {
   status: string; assignee: string | null; category: string | null; state: string | null;
@@ -26,9 +26,9 @@ export type DashboardData = {
 type Tally = { total: number; contacted: number; responded: number; bounced: number; byStatus: Record<string, number> };
 
 /** Pipeline order for the status tiles and the per-person table. */
-const PIPELINE = ["Not contacted", "Draft ready", "Sent", "Replied", "Meeting set", "Customer", "Not interested", "Bounced"];
-const CONTACTED = new Set(["Sent", "Replied", "Meeting set", "Not interested", "Customer", "Bounced"]);
-const RESPONDED = new Set(["Replied", "Meeting set", "Not interested", "Customer"]);
+const PIPELINE: string[] = [...STATUSES];
+const CONTACTED = new Set(["Sent", "Replied", ...DEAL_STAGES, "Not interested", "Customer", "Bounced"]);
+const RESPONDED = new Set(["Replied", ...DEAL_STAGES, "Not interested", "Customer"]);
 
 function tally(cells: Cell[]): Tally {
   const t: Tally = { total: 0, contacted: 0, responded: 0, bounced: 0, byStatus: {} };
@@ -146,11 +146,11 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
           <span className="val">{all.responded.toLocaleString()}</span>
           <span className="sub">{replyRate(all)} reply rate</span>
         </div>
-        <Link className="tile" href={prospects({ status: "Meeting set" })}>
-          <span className="lbl">Meetings set</span>
-          <span className="val">{count("Meeting set")}</span>
-          <span className="sub">open conversations</span>
-        </Link>
+        <div className="tile">
+          <span className="lbl">Open deals</span>
+          <span className="val">{DEAL_STAGES.reduce((s, st) => s + count(st), 0)}</span>
+          <span className="sub">qualifying through negotiation</span>
+        </div>
         <Link className="tile" href={prospects({ status: "Customer" })}>
           <span className="lbl">Customers</span>
           <span className="val">{count("Customer")}</span>
@@ -333,7 +333,7 @@ export default function Dashboard({ who, me, team, today, stats, due, warm, warm
 
       <div className="grid2">
         <section className="card">
-          <h2>Warm leads <span className="muted small">replied or meeting set</span></h2>
+          <h2>Warm leads <span className="muted small">replied or an open deal</span></h2>
           <ul className="list">
             {warm.map((w) => {
               const n = nextBy.get(w.id);
