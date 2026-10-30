@@ -12,6 +12,14 @@ Lou asks Claude to log calls, emails and follow-ups conversationally. Do it dire
 - Team member names are foreign keys: `Lou Rolwes`, `Dan Huber`, `Mike Smith`.
 - Find an org by name with `where lower(name) like '%...%'`; ids are slugs and not guessable.
 
+## Email drafts for review
+
+Cold emails go into `drafts` first; the sender reviews them on the Drafts page, and Claude sends only what they approve.
+
+- Loading: insert one row per email with `org_id`, `assignee` (the sender), `kind`, `batch` (e.g. `Mike, Wed Nov 4`), `seq`, `group_label`, `to_email`, `to_name`, `subject`, `body` (plain text, real line breaks), `research_note`, `scheduled_for` and `created_by`. Set `original_subject` and `original_body` to the same text as `subject` and `body`. Status starts at To review.
+- Sending: send only `status = 'OK to send'`, using the row's current `subject` and `body` (the reviewer may have edited them); if its `note` asks for a change, ask before sending. Then set `status = 'Sent'`, `sent_at`, `message_id` and `thread_url`, and log it the way `logActivity` does: an `Email sent` activity by the sender with the `thread_url`, `orgs.last_contact`, `orgs.status = 'Sent'` if it was earlier in the pipeline, close the org's open follow-ups and schedule the next one.
+- Needs changes: rewrite from the `note`, set `subject`, `body` and both `original_*` to the new text, and put it back to To review. Skip means don't send. A bounce sets `status = 'Bounced'` and gets a `Bounce` activity.
+
 ## Code conventions
 
 - Next.js 15: `cookies()`, `params` and `searchParams` are promises; await them.

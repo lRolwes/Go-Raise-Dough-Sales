@@ -6,6 +6,7 @@ The Go Raise Dough sales CRM: every prospect organization, who owns it, what has
 
 - **Dashboard** (the home page): prospect counts by status, follow-ups due, the last 7 days of emails, replies and calls compared with the week before, a per-person status table, breakdowns by org type, fundraising, state and contact type, warm leads, and recent replies and calls. Switch between everyone, one person, or unassigned prospects. The status, follow-up and breakdown numbers link to the matching list. The counts come from the `dashboard_stats()` database function.
 - **Follow-ups**: every open follow-up, filtered by when it is due (overdue, today, this week), by who owns it, and by the prospect's status, org type and fundraising. Mark one done or push it a week from the list.
+- **Drafts**: cold emails Claude has written, for the sender to review before they go out. Opens on your own drafts that haven't been sent; switch to another person or everyone, and filter by status, send day (Central time), group, state, or a search of org, town, subject and email. Each card has the recipient, send time and Claude's research note; edit the subject, email and notes in place (they save as you type), undo your edits, and mark it OK to send, Needs changes or Skip. Sent and bounced drafts are read-only. The nav badge counts your drafts still To review.
 - **Prospects**: the full list, filtered by status, assignee (including unassigned), org type, state, fundraising, game status, contact type and fit, plus a name search.
 - **Prospect page**: log a call, email or note (and optionally change the status and schedule the next follow-up in the same step), the full history, contacts, what the org runs, research evidence and sources, the email draft, and an editable details form.
 - **Add prospect**: a new organization with its main contact.
@@ -43,6 +44,7 @@ See `supabase/migrations/` for the full schema.
 - `contacts`: people, emails and phones per org.
 - `activities`: the history log (Email sent, Email received, Call, Voicemail, Meeting, Note, Bounce, Status change).
 - `follow_ups`: scheduled next steps. Open ones have `done_at is null`.
+- `drafts`: one row per email Claude has drafted. `assignee` is the sender, whose review queue it is. `subject` and `body` are what will be sent; `original_subject` and `original_body` are what Claude wrote, so the reviewer can undo. `status` is To review, OK to send, Needs changes or Skip (set by the reviewer, who is recorded in `reviewed_by` and `reviewed_at`), then Sent or Bounced once it goes out. `note` is the reviewer's notes to Claude; `scheduled_for` is when it should go out. The page can change only the subject, body, note and review status, and nothing once a draft is Sent or Bounced.
 - Views: `open_follow_ups` (open follow-ups with their org's fields) and `org_next_follow_up` (the earliest open follow-up per org).
 
 Every table has row-level security: only a signed-in, active team member can read or write.

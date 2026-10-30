@@ -8,15 +8,15 @@ import { todayCentral } from "@/lib/constants";
 export default async function Shell({ active, children }: { active: string; children: React.ReactNode }) {
   const supabase = await createClient();
   const me = await currentMember();
-  const { count: due } = await supabase
-    .from("follow_ups")
-    .select("id", { count: "exact", head: true })
-    .is("done_at", null)
-    .lte("due_on", todayCentral());
+  const [{ count: due }, { count: toReview }] = await Promise.all([
+    supabase.from("follow_ups").select("id", { count: "exact", head: true }).is("done_at", null).lte("due_on", todayCentral()),
+    supabase.from("drafts").select("id", { count: "exact", head: true }).eq("assignee", me ?? "").eq("status", "To review"),
+  ]);
 
   const tabs = [
     { href: "/", label: "Dashboard", key: "dashboard" },
     { href: "/followups", label: "Follow-ups", key: "followups" },
+    { href: "/drafts", label: "Drafts", key: "drafts" },
     { href: "/prospects", label: "Prospects", key: "prospects" },
     { href: "/prospects/new", label: "+ Add prospect", key: "new" },
   ];
@@ -32,6 +32,7 @@ export default async function Shell({ active, children }: { active: string; chil
               <Link key={t.key} href={t.href} className={active === t.key ? "on" : ""}>
                 {t.label}
                 {t.key === "followups" && !!due && <span className="badge" title="Due today or overdue">{due}</span>}
+                {t.key === "drafts" && !!toReview && <span className="badge" title="Your drafts waiting for review">{toReview}</span>}
               </Link>
             ))}
           </nav>

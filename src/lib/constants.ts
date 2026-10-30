@@ -74,10 +74,34 @@ export const ACTIVITY_KINDS = [
 
 export const STATES = ["IL", "MO", "OK", "IN", "NC", "MS", "WY", "NY"] as const;
 
+/** Email drafts (the `drafts` table). Sent and Bounced are set by Claude when it sends; the rest by the reviewer. */
+export const DRAFT_STATUSES = ["To review", "OK to send", "Needs changes", "Skip", "Sent", "Bounced"] as const;
+export const REVIEW_STATUSES = ["To review", "OK to send", "Needs changes", "Skip"] as const;
+
 /** Today's date in Central time, as YYYY-MM-DD. */
 export function todayCentral(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86400000);
   return d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+}
+
+/** The Central-time calendar date of a timestamp, as YYYY-MM-DD. */
+export function centralDay(ts: string | Date): string {
+  return new Date(ts).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+}
+
+/** A YYYY-MM-DD date as "Wed Nov 4" (with the year when it isn't this year). */
+export function fmtDay(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const opts: Intl.DateTimeFormatOptions = { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" };
+  if (String(y) !== todayCentral().slice(0, 4)) opts.year = "numeric";
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", opts).replace(/,/g, "");
+}
+
+/** A timestamp in Central time, e.g. "Wed Nov 4, 9:15 AM". */
+export function fmtWhen(ts?: string | null): string {
+  if (!ts) return "";
+  const time = new Date(ts).toLocaleTimeString("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" });
+  return `${fmtDay(centralDay(ts))}, ${time}`;
 }
 
 export function fmtDate(d?: string | null): string {

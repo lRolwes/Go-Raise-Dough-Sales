@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentMember } from "@/lib/session";
-import { todayCentral } from "@/lib/constants";
+import { REVIEW_STATUSES, todayCentral } from "@/lib/constants";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -187,6 +187,59 @@ export async function unlinkOrgs(formData: FormData) {
   const { data } = await supabase.from("org_links").delete().eq("id", String(formData.get("id"))).select("org_id, related_id").single();
   if (data) revalidatePath(`/prospects/${data.related_id}`);
   refresh(data?.org_id);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REVIEWABLE = new Set<string>(REVIEW_STATUSES);
+
+export type DraftPatch = { subject?: string; body?: string; note?: string; status?: string };
+
+/** Save a reviewer's changes to an email draft from the Drafts page (autosave and the status buttons).
+ *  Only the subject, body, notes and review status can change, and never once the draft has gone out.
+ *  Returns an error message instead of throwing so the card can show "Not saved". */
+export async function updateDraft(id: string, patch: DraftPatch): Promise<{ error?: string }> {
+  if (typeof id !== "string" || !UUID.test(id) || !patch || typeof patch !== "object") return { error: "Bad request." };
+  const me = await currentMember();
+  if (!me) return { error: "You aren't on the sales team list." };
+
+  const row: Record<string, string | null> = {};
+  for (const k of ["subject", "body", "note", "status"] as const)
+    if (patch[k] !== undefined && typeof patch[k] !== "string") return { error: `Bad ${k}.` };
+  if (patch.subject !== undefined) {
+    row.subject = patch.subject.replace(/[\r\n]+/g, " ").trim();
+    if (!row.subject) return { error: "The subject can't be blank." };
+    if (row.subject.length > 300) return { error: "The subject is too long." };
+  }
+  if (patch.body !== undefined) {
+    row.body = patch.body.replace(/\r\n?/g, "\n");
+    if (!row.body.trim()) return { error: "The email can't be blank." };
+    if (row.body.length > 20000) return { error: "The email is too long." };
+  }
+  if (patch.note !== undefined) {
+    row.note = patch.note.trim() || null;
+    if ((row.note?.length ?? 0) > 5000) return { error: "The notes are too long." };
+  }
+  if (patch.status !== undefined) {
+    if (!REVIEWABLE.has(patch.status)) return { error: "Bad status." };
+    // back to To review means nobody has reviewed it
+    const reviewed = patch.status !== "To review";
+    row.status = patch.status;
+    row.reviewed_by = reviewed ? me : null;
+    row.reviewed_at = reviewed ? new Date().toISOString() : null;
+  }
+  if (!Object.keys(row).length) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("drafts")
+    .update(row)
+    .eq("id", id)
+    .not("status", "in", "(Sent,Bounced)")
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "This draft has already gone out or no longer exists, so it can't be changed." };
+  revalidatePath("/drafts");
+  return {};
 }
 
 function slugify(s: string) {
